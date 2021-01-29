@@ -1,6 +1,7 @@
 function statesint = GetStatesInt_LR(namestatefile)
 % Lisa Roux, Mai 2018
-% 
+% Geoffrey, September 2020 - modify the path to find states.mat file
+%
 % Provides the time intervals corresponding to each brain states once Sleep
 % Scoring has been done on the session
 %
@@ -8,7 +9,7 @@ function statesint = GetStatesInt_LR(namestatefile)
 % requires: suprathresh (Andres)
 %
 % INPUTS
-%  exemple: namestatefile = 'TC03_Intan_S03_08012017_merged-states.mat'
+%  exemple: namestatefile = '7C012-S41';
 %
 % OUTPUT
 % statesint:    structure which stores the intervals for each states
@@ -25,14 +26,17 @@ function statesint = GetStatesInt_LR(namestatefile)
 
 %%
 
-try 
-a = load(namestatefile);
-statesVector = a.states;
+% try 
+load(namestatefile);
+% a = [namestatefile,'-states.mat'];
+% load(a)
+statesVector = states;
 % whos statesVector
+% 
 
-catch
-    disp('Sleep scoring needed')
-end
+% catch
+%     disp('Sleep scoring needed')
+% end
 
 %% Get NREM epochs
 % sum(statesVector == 3); % NREM epochs
