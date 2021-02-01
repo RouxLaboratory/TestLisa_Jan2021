@@ -1,4 +1,4 @@
-function [UID,Type1,Type2,pval, fmax, TtoPdur,SpkW,wavmean] = CellClassifier_bzLR(UID);
+function [UID,Type1,Type2,pval, fmax, TtoPdur,SpkW,wavmean] = CellClassifier_bzLR_GT(UID);
 % [Type1,Type2,pval, fmax, TtoPdur] = CellClassifier_bzLR(UID);
 %
 %   USAGE
@@ -21,9 +21,10 @@ function [UID,Type1,Type2,pval, fmax, TtoPdur,SpkW,wavmean] = CellClassifier_bzL
 % Lisa Roux, Mai 2018: from Eran Stark CellClassifier
 % update 31 May 2018: Truncates waveform to match 32 samples
 % Lisa, July 2020: add as outputs: SpkW,wavmean, and UID
-% Lisa, Fev2021
+% Geoffrey, 9 Oct 2020: add condition for positive spikes, NaN in
+% Type1,Type2, pval, TtoPdur
+
 %%
-%
 % for Amplipex recordings:
 %
         % scalefactor = 1 / 2^par.nBits * p2pvoltage * 1e6 / par.Amplification; % a2d units -> microVolts
@@ -46,8 +47,6 @@ scalefactor = 1 / 2^sessionInfo.nBits * sessionInfo.VoltageRange * 1e6 / session
 
 
 %% Get waveform features
-
-% 
 % %         unit = [2 2];
 %         data = GetSpikeWaveforms(unit); % 3D matrix: (1) indiv spikes, (2) site (x8), (3) sample (x32)
 %         test = mean(data,1);
@@ -65,8 +64,7 @@ scalefactor = 1 / 2^sessionInfo.nBits * sessionInfo.VoltageRange * 1e6 / session
 %         % channel
 %       
 %          MinAmpRes = testok(:,16);
-%         
-%        
+%                 
 %         %find the channel where the amplitude of the spike is the largest
 %         
 % %             ChSelect = 1;
@@ -77,8 +75,7 @@ scalefactor = 1 / 2^sessionInfo.nBits * sessionInfo.VoltageRange * 1e6 / session
 % %                     ChSelect = ii;
 % %                 end
 % %             end
-%         
-%         
+%                  
 %         idx = find(MinAmpRes(:) == min(MinAmpRes));
 %         ChSelect = idx;
 %         
@@ -139,30 +136,44 @@ end
 %                       into equal (overlapping) segments. window, fft, and
 %                       power spectrum each segment. then average the
 %                       spectra.
-        
-        
+               
 
             mp = mean( pow2( 2 : end, : ), 2 );
             [ ign, midx ] = max( mp );
             fmax = f( midx ); % peak of spectrum        
 
-%%
-%       
+%%    
 % % Gab code: 
 %   [powspectra,f2]=my_spectrum(maxmeanwv', 1024, 20000, hanning(32), 0, 0 );
 %   SpikeFreq2=f2(powspectra==max(powspectra));
 %   invF2=(1/SpikeFreq2)*1000;%(= spike width in ms)
             
-%%
-
-
+        %% Discrimination of positive spikes
+           
 %         waveform =  testok(ChSelect,:);
         waveform =  wavmean;
 %         nsamples = size(waveform,2);
+        MinWav=min(wavmean); 
+        MaxWav=max(wavmean);
+
+
+%    signal=[1:32;wavmean]';
+%    [int] = Threshold(signal,'>',(abs(MaxWav)/abs(MinWav))*10);
+%         if abs(MaxWav)>abs(MinWav) && size(int,1)~=2 
+        if abs(MaxWav)>(abs(MinWav)*1.5)
+           SpkW = 1/fmax*1000;
+           Type1=NaN;
+           Type2=NaN;
+           pval=NaN;
+           TtoPdur=NaN;
+
+%            figure,plot(1:32,wavmean);title(['Positive waveform from UID: ',num2str(UID)]);
+
+        else
 
         % 1- computes value of trough
 %         BestVal = testok(idx,16); 
-        TroughVal = min(wavmean); 
+        TroughVal = MinWav; 
 
         % 2- find sample location of the trough
         TroughSample = find(wavmean == TroughVal);
@@ -184,8 +195,7 @@ end
         % 6- Compute Ratio TroughToPeak
         RatioTtoP = abs(TroughVal)/abs(PeakVal);
         
-        
-        
+               
         %% From spikes_stats (Eran):
 %         fmax = f( midx ); % peak of spectrum
 %         sst.fmax( i, : ) = fmax;            % peak spectrum (max P2P chan)
@@ -212,7 +222,6 @@ end
         SpkW = 1/fmax*1000;
         [ Type2 pval ]= classify_waveform( [ TtoPdur SpkW] , 0 );
         
-        
-        
-        
+%  figure,plot(1:32,wavmean);title([num2str(UID),'   it is OK']);
+        end
         end
